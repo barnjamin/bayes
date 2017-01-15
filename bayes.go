@@ -54,6 +54,7 @@ func (n *NaiveBayes) Fit(data [][]float64, labels []string) error {
 	return nil
 }
 
+//Can use this to add data dynamically but
 func (n *NaiveBayes) Append(data []float64, label string) error {
 	if len(data) != n.ColumnCnt {
 		return fmt.Errorf("Invalid data: column count mismatch %d != %d", n.ColumnCnt, data)
