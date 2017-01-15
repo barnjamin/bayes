@@ -20,17 +20,23 @@ func CrossValidate(data [][]float64, labels []string, percentage float64) float6
 func split(data [][]float64, labels []string, percentage float64) ([][]float64, []string, [][]float64, []string) {
 	count := int(float64(len(data)) * percentage)
 	idxMap := map[int]bool{}
+	idxList := []int{}
 	for x := 0; x < count; x++ {
-		idxMap[rand.Intn(len(data))] = true
+		idx := rand.Intn(len(data))
+		idxMap[idx] = true
+		idxList = append(idxList, idx)
 	}
 
 	trainD, testD := [][]float64{}, [][]float64{}
 	trainL, testL := []string{}, []string{}
+
+	for _, idx := range idxList {
+		testD = append(testD, data[idx])
+		testL = append(testL, labels[idx])
+	}
+
 	for idx, vals := range data {
-		if _, ok := idxMap[idx]; ok {
-			testD = append(testD, vals)
-			testL = append(testL, labels[idx])
-		} else {
+		if _, ok := idxMap[idx]; !ok {
 			trainD = append(trainD, vals)
 			trainL = append(trainL, labels[idx])
 		}
