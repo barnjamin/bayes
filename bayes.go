@@ -6,19 +6,22 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-
-	"math"
-
-	"github.com/gonum/stat"
+	"sync"
 )
 
 type NaiveBayes struct {
-	Stats   map[string][]Stats
-	Grouped map[string][][]float64
+	Stats     map[string][]Stats
+	Grouped   map[string][][]float64
+	ColumnCnt int
+	SampleCnt int
+	sync.Mutex
 }
 
 func New() *NaiveBayes {
-	return &NaiveBayes{}
+	return &NaiveBayes{
+		Stats:   map[string][]Stats{},
+		Grouped: map[string][][]float64{},
+	}
 }
 
 func Load(r io.Reader) (*NaiveBayes, error) {
@@ -38,64 +41,54 @@ func (n *NaiveBayes) Fit(data [][]float64, labels []string) error {
 		return errors.New("Invalid data: data and label length dont match or are 0")
 	}
 
-	columns := len(data[0])
+	n.SampleCnt = len(data)
+	n.ColumnCnt = len(data[0])
 
 	//Separate into groups based on data/labels
-	grouped := map[string][][]float64{}
 	for sampleIdx, label := range labels {
-
-		if len(data[sampleIdx]) != columns {
-			return fmt.Errorf("Invalid data: column count mismatch %d != %d", columns, data[sampleIdx])
-		}
-
-		///Initialize raw grouped
-		if _, ok := grouped[label]; !ok {
-			grouped[label] = make([][]float64, columns)
-			for x := 0; x < columns; x++ {
-				grouped[label][x] = []float64{}
-			}
-		}
-
-		//Set values according to the index
-		for columnIdx, val := range data[sampleIdx] {
-			grouped[label][columnIdx] = append(grouped[label][columnIdx], val)
-		}
-	}
-	n.Grouped = grouped
-
-	//Calculate stats on each group
-	stats := map[string][]Stats{}
-	for label, colVals := range n.Grouped {
-		stats[label] = make([]Stats, len(colVals))
-		for idx, vals := range colVals {
-			mean, std := stat.MeanStdDev(vals, nil)
-			if math.IsNaN(std) {
-				std = 0.0
-			}
-			stats[label][idx] = Stats{
-				Mean: mean,
-				Std:  std,
-			}
-		}
+		n.Append(data[sampleIdx], label)
 	}
 
-	n.Stats = stats
+	n.ComputeStats()
 
 	return nil
 }
 
-func (n *NaiveBayes) Predict(data []float64) string {
-	probs := n.PredictProbability(data)
+func (n *NaiveBayes) Append(data []float64, label string) error {
+	if len(data) != n.ColumnCnt {
+		return fmt.Errorf("Invalid data: column count mismatch %d != %d", n.ColumnCnt, data)
+	}
 
-	prediction, maxProb := "", 0.0
-	for label, prob := range probs {
-		if prob > maxProb {
-			prediction = label
-			maxProb = prob
+	///Initialize raw grouped
+	if _, ok := n.Grouped[label]; !ok {
+		n.Grouped[label] = make([][]float64, n.ColumnCnt)
+		for x := 0; x < n.ColumnCnt; x++ {
+			n.Grouped[label][x] = []float64{}
 		}
 	}
 
-	return prediction
+	//Set values according to the index
+	for columnIdx, val := range data {
+		n.Grouped[label][columnIdx] = append(n.Grouped[label][columnIdx], val)
+	}
+
+	return nil
+}
+
+func (n *NaiveBayes) ComputeStats() {
+	//Calculate stats on each label and column
+	stats := map[string][]Stats{}
+	for label, colVals := range n.Grouped {
+		stats[label] = make([]Stats, len(colVals))
+		for idx, vals := range colVals {
+			stats[label][idx] = CalculateStats(vals)
+		}
+	}
+	n.Stats = stats
+}
+
+func (n *NaiveBayes) Predict(data []float64) string {
+	return maxVal(n.PredictProbability(data))
 }
 
 func (n *NaiveBayes) PredictProbability(data []float64) map[string]float64 {
@@ -117,8 +110,18 @@ func (n *NaiveBayes) Dump(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-
 	_, err = w.Write(b)
-
 	return err
+}
+
+func maxVal(probs map[string]float64) string {
+	prediction, maxProb := "", 0.0
+	for label, prob := range probs {
+		if prob > maxProb {
+			prediction = label
+			maxProb = prob
+		}
+	}
+
+	return prediction
 }
