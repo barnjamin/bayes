@@ -1,9 +1,24 @@
 package bayes
 
 import (
+	"log"
 	"os"
 	"testing"
 )
+
+func Example() {
+	data, labels := generateData()
+
+	nb := New()
+	if err := nb.Fit(data, labels); err != nil {
+		log.Printf("Failed to fit data: %+v", err)
+	}
+
+	for idx, label := range labels {
+		prediction := nb.Predict(data[idx])
+		log.Printf("Expected: %s Got: %s", label, prediction)
+	}
+}
 
 func TestNew(t *testing.T) {
 	if nb := New(); nb == nil {

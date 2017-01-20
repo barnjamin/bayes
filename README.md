@@ -2,4 +2,4 @@
 
 Simple Bayes Classifier Package
 
-http://godoc.org/github/barnjamin/bayes
+godoc.org/github.com/barnjamin/bayes
