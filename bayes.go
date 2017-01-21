@@ -54,7 +54,8 @@ func (n *NaiveBayes) Fit(data [][]float64, labels []string) error {
 	return nil
 }
 
-//Can use this to add data dynamically but
+// Add new observation dynamically
+// Must call ComputeStats before calling Predict again
 func (n *NaiveBayes) Append(data []float64, label string) error {
 	if len(data) != n.ColumnCnt {
 		return fmt.Errorf("Invalid data: column count mismatch %d != %d", n.ColumnCnt, data)
@@ -95,9 +96,6 @@ func (n *NaiveBayes) Predict(data []float64) string {
 func (n *NaiveBayes) PredictProbability(data []float64) map[string]float64 {
 	probabilities := map[string]float64{}
 	for label, stats := range n.Stats {
-		if _, ok := probabilities[label]; !ok {
-			probabilities[label] = 0.0
-		}
 		for idx, stat := range stats {
 			probabilities[label] += stat.CalculateProbability(data[idx])
 		}
