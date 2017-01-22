@@ -4,7 +4,7 @@ import "math/rand"
 
 func CrossValidate(data [][]float64, labels []string, percentage float64) float64 {
 	nb := New()
-	trainData, trainLabels, testData, testLabels := split(data, labels, percentage)
+	trainData, trainLabels, testData, testLabels := Split(data, labels, percentage)
 	nb.Fit(trainData, trainLabels)
 
 	correct := 0
@@ -17,26 +17,25 @@ func CrossValidate(data [][]float64, labels []string, percentage float64) float6
 	return (float64(correct) / float64(len(testLabels))) * 100
 }
 
-func split(data [][]float64, labels []string, percentage float64) ([][]float64, []string, [][]float64, []string) {
-	count := int(float64(len(data)) * percentage)
-	idxMap := map[int]bool{}
-	idxList := []int{}
-	for x := 0; x < count; x++ {
-		idx := rand.Intn(len(data))
-		idxMap[idx] = true
-		idxList = append(idxList, idx)
-	}
+func Split(data [][]float64, labels []string, percentage float64) ([][]float64, []string, [][]float64, []string) {
 
 	trainD, testD := [][]float64{}, [][]float64{}
 	trainL, testL := []string{}, []string{}
+	count := int(float64(len(data)) * percentage)
 
-	for _, idx := range idxList {
-		testD = append(testD, data[idx])
-		testL = append(testL, labels[idx])
+	idxMap := map[int]bool{}
+	for len(idxMap) < count {
+		idx := rand.Intn(len(data))
+		if _, ok := idxMap[idx]; !ok {
+			idxMap[idx] = true
+		}
 	}
 
 	for idx, vals := range data {
-		if _, ok := idxMap[idx]; !ok {
+		if _, ok := idxMap[idx]; ok {
+			testD = append(testD, data[idx])
+			testL = append(testL, labels[idx])
+		} else {
 			trainD = append(trainD, vals)
 			trainL = append(trainL, labels[idx])
 		}

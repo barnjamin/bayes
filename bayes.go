@@ -6,8 +6,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"sync"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().Unix())
+}
 
 type NaiveBayes struct {
 	Stats     map[string][]Stats
